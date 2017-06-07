@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+from django.db import models
 
+# Create your models here.
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import Max
 
 # Create your models here.
 
@@ -43,7 +44,12 @@ class Event(models.Model):
     cost = models.DecimalField(max_digits=10, decimal_places=3)
     distance = models.DecimalField(max_digits=10, decimal_places=2)
     category =  models.CharField(max_length=1, choices=EVENT_CATEGORIES, default='P')
-    limit =  models.PositiveIntegerField(default=0)
+    suscriptions =  models.PositiveIntegerField(default=0)
+    medals = models.PositiveIntegerField(default=0)
+    jerseys = models.PositiveIntegerField(default=0)
+    left_medals = models.PositiveIntegerField(default=0)
+    left_jerseys = models.PositiveIntegerField(default=0)
+    left_suscriptions = models.PositiveIntegerField(default=0)
     
     def __str__(self):
         return self.name
@@ -51,9 +57,9 @@ class Event(models.Model):
 
 class Cyclist(models.Model):
     firstname = models.CharField(max_length=50)
-    lastname = models.CharField(max_length=50)
+    lastname = models.CharField(max_length=50, db_index=True)
     secondlastname = models.CharField(max_length=50)
-    email = models.EmailField()
+    email = models.EmailField(db_index=True)
     age = models.PositiveIntegerField()
     birthday = models.DateField() 
     created = models.DateField(auto_now_add=True)
@@ -69,6 +75,7 @@ class Cyclist(models.Model):
         return '%s %s %s' % (self.firstname, self.lastname, self.secondlastname)
 
 
+
 class Suscription(models.Model):
     user= models.ForeignKey(User)
     event = models.ForeignKey(Event)
@@ -81,17 +88,21 @@ class Suscription(models.Model):
     package = models.CharField(max_length=1, choices=PACKAGE_OPTIONS, default='U')
     status = models.CharField(max_length=1, choices=SUSCRIPTION_STATUS, default='U')
 
+    class Meta:
+      unique_together = (('event', 'number'), ('event', 'cyclist'))
+
     def __str__(self):
         return '%s %s' % (self.number, self.cyclist)
 
+    def save(self, *args, **kwargs):
+      max_num = Suscription.objects.filter(event=self.event).aggregate(Max('number'))
+      self.num  = max_num + 1
+      super(Suscription, self).save(*args, **kwargs)
+      if self.jersey:
+        self.event.left_jerseys -= 1
+      if self.medal:
+        self.event.left_medals -= 1
 
-class Medal(models.Model):
-    event = models.ForeignKey(Event)
-    total = models.PositiveIntegerField(default=0)
-    amount = models.PositiveIntegerField(default=0)
+      self.event.left_suscriptions -= 1
+      self.event.save()
 
-
-class Jersey(models.Model):
-    event = models.ForeignKey(Event)
-    total = models.PositiveIntegerField(default=0)
-    amount = models.PositiveIntegerField(default=0)

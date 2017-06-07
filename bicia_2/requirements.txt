@@ -1,0 +1,6 @@
+Django==1.8.18
+django-admin-bootstrapped==2.5.7
+django-admin-bootstrapped-plus==0.1.1.2
+django-autocomplete-light==3.2.9
+django-bootstrap3==8.2.3
+pytz==2017.2
